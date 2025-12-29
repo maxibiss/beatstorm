@@ -291,55 +291,154 @@ def generate_bass(events, context, bars):
         if random.random() > 0.4:
             add_note(events, random.choice(scale), offset + 3, 90, 0.4, channel, cfg)
 
+def generate_rhythm_motif(bars=1):
+    """
+    Generates a rhythmic pattern (offsets) for a given number of bars.
+    Prefers on-beat and 8th notes, with occasional syncopation.
+    """
+    rhythm = []
+    current_beat = 0
+    end_beat = bars * 4
+    
+    while current_beat < end_beat:
+        # Weighted duration choice: 
+        # 0.5 (8th) = 50%, 1.0 (Quarter) = 30%, 0.25 (16th) = 10%, 1.5 (Dotted) = 10%
+        r = random.random()
+        if r < 0.5: dur = 0.5
+        elif r < 0.8: dur = 1.0
+        elif r < 0.9: dur = 0.25
+        else: dur = 1.5
+        
+        # Don't hold note into next beat pattern awkwardly
+        if current_beat + dur > end_beat:
+            dur = end_beat - current_beat
+            
+        rhythm.append({"beat": current_beat, "duration": dur})
+        
+        # Gap chance (Rest) - 20%
+        # If we didn't add a rest, current_beat advances by dur
+        # If we want a rest, we add to current_beat but don't append a note event?
+        # Simpler: The rhythm list defines where NOTES start.
+        # We need to decide the gap to next note.
+        
+        # Advance time
+        current_beat += dur
+        
+        # Occasional rest
+        if random.random() < 0.15:
+            current_beat += random.choice([0.5, 1.0])
+            
+    return rhythm
+
+def generate_melodic_phrase(scale, start_note, rhythm_pattern):
+    """
+    Maps a rhythm pattern to notes using a 'Random Walk' approach.
+    Avoids large jumps; prefers stepwise motion.
+    """
+    phrase = []
+    current_note = start_note
+    scale_len = len(scale)
+    
+    # Find index of start_note in scale (approximate)
+    try:
+        current_idx = scale.index(current_note)
+    except ValueError:
+        current_idx = 0 # Fallback
+        
+    for hit in rhythm_pattern:
+        # Random Walk: -2, -1, 0, +1, +2 steps in scale
+        step = random.choices([-2, -1, 0, 1, 2], weights=[0.1, 0.3, 0.2, 0.3, 0.1])[0]
+        
+        # Bounce off boundaries
+        next_idx = current_idx + step
+        if next_idx < 0: next_idx = 1
+        if next_idx >= scale_len: next_idx = scale_len - 2
+        
+        current_idx = next_idx
+        note = scale[current_idx]
+        
+        phrase.append({"beat": hit["beat"], "duration": hit["duration"], "note": note})
+        
+    return phrase
+
 def generate_melody(events, context, bars):
     # Channel 1
     channel = 1
     cfg = context
     root = cfg["root"]
     scale_name = cfg["scale"]
+    
+    # Expanded range (2 octaves)
     scale = get_scale_notes(root, scale_name, 2)
     
     # Flavor Note Emphasis
     flavors = FLAVOR_NOTES.get(scale_name, [])
     
-    # Generate a motif for 4 bars, then repeat/mutate
-    motif = []
+    # --- Form: A - A' - A - B (Call & Response) ---
     
-    # 5-10 notes per 4 bars
-    num_notes = random.randint(5, 12)
+    # 1. Generate Motif A (1 Bar Rhythm)
+    rhythm_a = generate_rhythm_motif(bars=1)
     
-    for _ in range(num_notes):
-        beat = random.choice([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5])
-        beat += random.randint(0, 3) # Spread across 4 bars
+    # 2. Generate Melody for A
+    # Start near the middle of the scale
+    start_seed = scale[len(scale)//2]
+    phrase_a = generate_melodic_phrase(scale, start_seed, rhythm_a)
+    
+    # 3. Construct the 4-bar Loop
+    loop_events = []
+    
+    # Bar 1: Phrase A (Statement)
+    loop_events.extend(phrase_a)
+    
+    # Bar 2: Phrase A' (Repetition/Variation)
+    # Same rhythm words, slightly different pitch contour?
+    # Or strict repetition? Let's do strict repetition with end variation.
+    phrase_a_prime = generate_melodic_phrase(scale, start_seed, rhythm_a) 
+    # Use slight mutation of A instead of fresh gen?
+    # Let's shift A' up/down a scale degree?
+    # For now, fresh walk with same rhythm is good.
+    for n in phrase_a_prime:
+        n["beat"] += 4 # Shift to bar 2
+    loop_events.extend(phrase_a_prime)
+    
+    # Bar 3: Phrase A (Restatement)
+    phrase_a_restated = []
+    for n in phrase_a:
+        # Copy dict
+        new_n = n.copy()
+        new_n["beat"] += 8 # Shift to bar 3
+        phrase_a_restated.append(new_n)
+    loop_events.extend(phrase_a_restated)
+    
+    # Bar 4: Phrase B (Resolution/Turnaround)
+    # Different rhythm often longer notes or resolving to root
+    rhythm_b = generate_rhythm_motif(bars=1)
+    # Force end on root?
+    phrase_b = generate_melodic_phrase(scale, scale[0], rhythm_b)
+    # Last note overwrite to root
+    if phrase_b:
+        phrase_b[-1]["note"] = scale[0] # Resolve
+        phrase_b[-1]["duration"] = 2.0  # Hold
         
-        # Flavor Logic: 30% chance to force a flavor note
-        if flavors and random.random() < 0.3:
-            idx = random.choice(flavors)
-            if idx < len(scale):
-                note = scale[idx]
-            else:
-                note = random.choice(scale)
-        else:
-            note = random.choice(scale)
-            
-        motif.append({"beat": beat, "note": note})
-        
+    for n in phrase_b:
+        n["beat"] += 12
+    loop_events.extend(phrase_b)
+    
+    # 4. Apply to global events (Repeat for total bars)
+    # 'loop_events' covers 4 bars.
+    
     for bar_chunk in range(0, bars, 4):
-        offset = bar_chunk * 4
-        for m in motif:
-                # Variation: 20% chance to change note
-                note = m["note"]
-                if random.random() < 0.2:
-                    # 50% chance for in-scale change, 50% for chromatic passing tone
-                    if random.random() < 0.5:
-                         note = random.choice(scale)
-                    else:
-                         # Chromatic logic: Pick any note in the octave range
-                         base_root = scale[0]
-                         chromatic_note = base_root + random.randint(0, 12)
-                         note = chromatic_note
-                    
-                add_note(events, note, offset + m["beat"], 90, 0.5, channel, cfg)
+        chunk_offset = bar_chunk * 4
+        
+        for ev in loop_events:
+            # Final probability check for Flavor
+            note = ev["note"]
+            if flavors and random.random() < 0.2:
+                 # Inject flavor occasionally
+                 f_idx = random.choice(flavors)
+                 if f_idx < len(scale): note = scale[f_idx]
+
+            add_note(events, note, chunk_offset + ev["beat"], 90, ev["duration"], channel, cfg)
 
 def generate_chords(events, context, bars):
     # Channel 2
