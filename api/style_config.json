@@ -1,0 +1,98 @@
+{
+    "styles": {
+        "Boom Bap": {
+            "roots": [
+                "C",
+                "A",
+                "G",
+                "F"
+            ],
+            "scales": [
+                "Natural Minor",
+                "Major",
+                "Dorian"
+            ],
+            "description": "Jazz-influenced, soulful, and grounded."
+        },
+        "Trap": {
+            "roots": [
+                "F",
+                "F#",
+                "G",
+                "C#"
+            ],
+            "scales": [
+                "Natural Minor",
+                "Phrygian",
+                "Aeolian"
+            ],
+            "description": "Dark, heavy tension, and high energy."
+        },
+        "Drill": {
+            "roots": [
+                "C#",
+                "G",
+                "D"
+            ],
+            "scales": [
+                "Phrygian",
+                "Natural Minor",
+                "Locrian"
+            ],
+            "description": "Sinister, cold, and aggressive."
+        },
+        "Storch": {
+            "roots": [
+                "F#",
+                "B",
+                "C#"
+            ],
+            "scales": [
+                "Harmonic Minor",
+                "Double Harmonic Major",
+                "Phrygian Dominant"
+            ],
+            "description": "Exotic, Middle Eastern influence, and cinematic."
+        },
+        "EDM": {
+            "roots": [
+                "F",
+                "A",
+                "C",
+                "G"
+            ],
+            "scales": [
+                "Major",
+                "Natural Minor",
+                "Mixolydian"
+            ],
+            "description": "Uplifting, high-energy, and harmonic."
+        },
+        "Flume": {
+            "roots": [
+                "F#",
+                "B",
+                "D"
+            ],
+            "scales": [
+                "Lydian",
+                "Major (7th focused)",
+                "Melodic Minor"
+            ],
+            "description": "Experimental, lush, and soulful."
+        },
+        "Dilla": {
+            "roots": [
+                "A",
+                "G",
+                "C"
+            ],
+            "scales": [
+                "Natural Minor",
+                "Dorian",
+                "Major"
+            ],
+            "description": "Laid-back, jazzy, and swing-heavy."
+        }
+    }
+}
